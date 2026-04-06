@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import type { PropertyData, GeneratedContent } from './types';
 
 const SYSTEM_PROMPT = `You are a world-class hospitality brand writer creating content for a premium marketing brochure.
@@ -16,8 +15,6 @@ Hard rules:
 - Return ONLY valid JSON. No explanation, no markdown, no code blocks.`;
 
 export async function generateContent(property: PropertyData): Promise<GeneratedContent> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
   const prompt = `Generate premium marketing brochure content for this property. Return ONLY a valid JSON object matching the schema exactly.
 
 PROPERTY DATA:
@@ -61,6 +58,49 @@ RETURN THIS EXACT JSON STRUCTURE (fill every field):
 
 Generate units array from the property's units. Generate add_ons from the property's experiences. Use actual review text where reviews are provided.`;
 
+  // Support both Azure OpenAI and Anthropic based on env vars
+  if (process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT) {
+    return generateWithAzure(prompt);
+  }
+  return generateWithAnthropic(prompt);
+}
+
+async function generateWithAzure(prompt: string): Promise<GeneratedContent> {
+  const endpoint = process.env.AZURE_OPENAI_ENDPOINT!.replace(/\/$/, '');
+  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+  const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=2024-02-01`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': process.env.AZURE_OPENAI_API_KEY!,
+    },
+    body: JSON.stringify({
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user',   content: prompt },
+      ],
+      max_tokens: 4096,
+      temperature: 0.8,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Azure OpenAI error: ${res.status} — ${err}`);
+  }
+
+  const data = await res.json() as { choices: Array<{ message: { content: string } }> };
+  const raw   = data.choices[0].message.content.trim();
+  const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  return JSON.parse(clean) as GeneratedContent;
+}
+
+async function generateWithAnthropic(prompt: string): Promise<GeneratedContent> {
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 4096,
@@ -68,7 +108,7 @@ Generate units array from the property's units. Generate add_ons from the proper
     messages: [{ role: 'user', content: prompt }],
   });
 
-  const raw = (message.content[0] as { text: string }).text.trim();
+  const raw   = (message.content[0] as { text: string }).text.trim();
   const clean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
   return JSON.parse(clean) as GeneratedContent;
 }
