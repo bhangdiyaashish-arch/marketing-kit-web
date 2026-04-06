@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+* { box-sizing: border-box; }
+
+body {
+  background: #0D0F14;
+  color: #E8E8E8;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+input, textarea, select {
+  background: #1A1D27;
+  border: 1px solid #252836;
+  color: #E8E8E8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: 'Inter', system-ui, sans-serif;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: #C4A24A;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #4A4D5C;
+}
+
+select option {
+  background: #1A1D27;
+}
+
+label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #6B7080;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
