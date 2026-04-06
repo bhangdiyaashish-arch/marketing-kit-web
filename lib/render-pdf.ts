@@ -1,6 +1,11 @@
 import puppeteer from 'puppeteer';
 
 export async function renderPDF(html: string): Promise<Buffer> {
+  // Puppeteer automatically reads PUPPETEER_EXECUTABLE_PATH from the environment.
+  // Azure App Settings may inject a stale Windows path — clear it so Puppeteer
+  // uses its own bundled Chromium (downloaded during npm ci).
+  delete process.env.PUPPETEER_EXECUTABLE_PATH;
+
   const browser = await puppeteer.launch({
     headless: true,
     args: [
